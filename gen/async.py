@@ -1,3 +1,4 @@
+import json
 import mimetypes
 import traceback
 import base64
@@ -48,6 +49,16 @@ def base2bin(s):
         return s
 
 
+def buildRequest(data, img='loxx.png'):
+        # if you put base 64 in , will covert to binary 
+        bin_data = base2bin(data)
+        fields = []
+        files = [('image', img, bin_data)]
+        content_type, body = encode_multipart_formdata(fields, files)
+        headers = {"Content-Type": content_type, 'content-length': str(len(body))}
+        request = tornado.httpclient.HTTPRequest(url_prefix,
+                                         method="POST", headers=headers, body=body, validate_cert=False)
+        return request
 
 
 @gen.coroutine
@@ -57,16 +68,12 @@ def do_upload(img):
 
 
         # if you put base 64 in , will covert to binary 
-        bin_data = base2bin(f.read())
-        files = [('image', img, bin_data)]
-        fields = []
-        content_type, body = encode_multipart_formdata(fields, files)
-        headers = {"Content-Type": content_type, 'content-length': str(len(body))}
-        request = tornado.httpclient.HTTPRequest(url_prefix,
-                                         method="POST", headers=headers, body=body, validate_cert=False)
+        data = f.read()
+        request = buildRequest(data)
         response = yield httpclient.AsyncHTTPClient().fetch(request)
-        gen.Return(response.body)
-
+        data = json.loads(response.body)
+        md5 = data[0].get("info", {}).get("md5")
+        print("md5 -->{}".format(md5))
 
 
 
